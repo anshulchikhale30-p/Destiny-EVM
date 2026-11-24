@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
+import { getAddress, isAddress } from "viem";
 import {
   usePoolMetadata,
   useGetUserShares,
@@ -25,10 +26,14 @@ import {
   usePoolState,
   useUserPosition,
 } from "@/lib/web3/pool";
+import { useIsPool } from "@/lib/web3/factory";
 import NotFoundPool from "@/components/game/NotFoundPool";
+import InvalidPool from "@/components/game/InvalidPool";
 import { TransactionModal } from "@/components/modals";
 import { formatEther } from "viem/utils";
 import Link from "next/link";
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 // Info Tooltip Component
 const InfoTooltip = ({ text }: { text: string }) => {
@@ -109,13 +114,21 @@ export default function PoolDetailPage() {
   const [showInfoBanner, setShowInfoBanner] = useState(true);
 
   const searchParams = useSearchParams();
-  const contract = searchParams.get("contract") as `0x${string}` | null;
+  const contractParam = searchParams.get("contract");
+  const contract =
+    contractParam && isAddress(contractParam)
+      ? getAddress(contractParam)
+      : undefined;
   const { address: userAddress } = useAccount();
   const router = useRouter();
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
+  const { isPool, isLoading: isPoolLoading } = useIsPool(
+    contract ?? ZERO_ADDRESS
+  );
+
   const { metadata, refetch: refetchMetadata } = usePoolMetadata(
-    contract || "0x0000000000000000000000000000000000000000"
+    contract ?? ZERO_ADDRESS
   );
 
   const {
@@ -123,8 +136,8 @@ export default function PoolDetailPage() {
     bearShares,
     refetch: refetchShares,
   } = useGetUserShares(
-    contract || "0x0000000000000000000000000000000000000000",
-    userAddress || "0x0000000000000000000000000000000000000000"
+    contract ?? ZERO_ADDRESS,
+    userAddress ?? ZERO_ADDRESS
   );
 
   const {
@@ -133,26 +146,26 @@ export default function PoolDetailPage() {
     priceSellBull,
     priceSellBear,
     refetch: refetchPrices,
-  } = useTokenPrices(contract || "0x0000000000000000000000000000000000000000");
+  } = useTokenPrices(contract ?? ZERO_ADDRESS);
 
   const { state: poolState, refetch: refetchPoolState } = usePoolState(
-    contract || "0x0000000000000000000000000000000000000000"
+    contract ?? ZERO_ADDRESS
   );
 
   const bullPosition = useUserPosition(
-    contract || "0x0000000000000000000000000000000000000000",
+    contract ?? ZERO_ADDRESS,
     userAddress,
     "BULL"
   );
 
   const bearPosition = useUserPosition(
-    contract || "0x0000000000000000000000000000000000000000",
+    contract ?? ZERO_ADDRESS,
     userAddress,
     "BEAR"
   );
 
   const { mint, burn, claimBull, claimBear } = usePoolWrites(
-    contract || "0x0000000000000000000000000000000000000000"
+    contract ?? ZERO_ADDRESS
   );
 
   const {
@@ -179,27 +192,27 @@ export default function PoolDetailPage() {
   }, [isConfirming, isConfirmed, isErrored, receiptError]);
 
   useEffect(() => {
-    if (!contract) {
+    if (!contractParam) {
       router.push("/app");
     }
-  }, [contract, router]);
+  }, [contractParam, router]);
 
   const isExpired = metadata?.expiry
     ? Number(metadata.expiry) < Math.floor(Date.now() / 1000)
     : false;
 
   useEffect(() => {
-    if (isExpired && metadata && contract) {
+    if (isPool && isExpired && metadata && contract) {
       const timer = setTimeout(() => {
         router.push(`/app/claim?contract=${contract}`);
       }, 3000);
 
       return () => clearTimeout(timer);
     }
-  }, [isExpired, metadata, contract, router]);
+  }, [isPool, isExpired, metadata, contract, router]);
 
   // NOW SAFE TO DO EARLY RETURNS
-  if (!contract) {
+  if (!contractParam) {
     return (
       <div className="min-h-screen bg-[#FDFCF5] flex items-center justify-center">
         <div className="text-center">
@@ -207,6 +220,10 @@ export default function PoolDetailPage() {
         </div>
       </div>
     );
+  }
+
+  if (!contract) {
+    return <InvalidPool />;
   }
 
   const refetchAllData = async () => {
@@ -351,6 +368,21 @@ export default function PoolDetailPage() {
     setTxStatus("idle");
     setTxError(undefined);
   };
+
+  if (isPoolLoading) {
+    return (
+      <div className="min-h-screen bg-[#FDFCF5] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Verifying pool...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isPool) {
+    return <NotFoundPool />;
+  }
 
   if (metadata === null) {
     return <NotFoundPool />;

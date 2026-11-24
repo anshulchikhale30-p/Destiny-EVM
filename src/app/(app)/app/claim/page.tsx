@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
+import { getAddress, isAddress } from "viem";
 import {
   usePoolMetadata,
   useGetUserShares,
@@ -23,9 +24,13 @@ import {
   usePoolState,
   useTotalShares,
 } from "@/lib/web3/pool";
+import { useIsPool } from "@/lib/web3/factory";
 import NotFoundPool from "@/components/game/NotFoundPool";
+import InvalidPool from "@/components/game/InvalidPool";
 import { TransactionModal } from "@/components/modals";
 import { formatEther } from "viem/utils";
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 export default function ClaimPage() {
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
@@ -38,12 +43,20 @@ export default function ClaimPage() {
   const [txDescription, setTxDescription] = useState<string | undefined>();
 
   const searchParams = useSearchParams();
-  const contract = searchParams.get("contract") as `0x${string}` | null;
+  const contractParam = searchParams.get("contract");
+  const contract =
+    contractParam && isAddress(contractParam)
+      ? getAddress(contractParam)
+      : undefined;
   const { address: userAddress } = useAccount();
   const router = useRouter();
 
+  const { isPool, isLoading: isPoolLoading } = useIsPool(
+    contract ?? ZERO_ADDRESS
+  );
+
   const { metadata, refetch: refetchMetadata } = usePoolMetadata(
-    contract || "0x0000000000000000000000000000000000000000"
+    contract ?? ZERO_ADDRESS
   );
 
   const {
@@ -51,20 +64,20 @@ export default function ClaimPage() {
     bearShares,
     refetch: refetchShares,
   } = useGetUserShares(
-    contract || "0x0000000000000000000000000000000000000000",
-    userAddress || "0x0000000000000000000000000000000000000000"
+    contract ?? ZERO_ADDRESS,
+    userAddress ?? ZERO_ADDRESS
   );
 
   const { state: poolState, refetch: refetchPoolState } = usePoolState(
-    contract || "0x0000000000000000000000000000000000000000"
+    contract ?? ZERO_ADDRESS
   );
 
   const { totalBullShares, totalBearShares } = useTotalShares(
-    contract || "0x0000000000000000000000000000000000000000"
+    contract ?? ZERO_ADDRESS
   );
 
   const { takeSnapshot, claimBull, claimBear } = usePoolWrites(
-    contract || "0x0000000000000000000000000000000000000000"
+    contract ?? ZERO_ADDRESS
   );
 
   const {
@@ -90,22 +103,22 @@ export default function ClaimPage() {
   }, [isConfirming, isConfirmed, isErrored, receiptError]);
 
   useEffect(() => {
-    if (!contract) {
+    if (!contractParam) {
       router.push("/app");
     }
-  }, [contract, router]);
+  }, [contractParam, router]);
 
   const isExpired = metadata?.expiry
     ? Number(metadata.expiry) < Math.floor(Date.now() / 1000)
     : false;
 
   useEffect(() => {
-    if (metadata && !isExpired && contract) {
+    if (isPool && metadata && !isExpired && contract) {
       router.push(`/app/pool?contract=${contract}`);
     }
-  }, [metadata, isExpired, contract, router]);
+  }, [isPool, metadata, isExpired, contract, router]);
 
-  if (!contract) {
+  if (!contractParam) {
     return (
       <div className="min-h-screen bg-[#FDFCF5] flex items-center justify-center">
         <div className="text-center">
@@ -113,6 +126,10 @@ export default function ClaimPage() {
         </div>
       </div>
     );
+  }
+
+  if (!contract) {
+    return <InvalidPool />;
   }
 
   const refetchAllData = async () => {
@@ -237,6 +254,21 @@ export default function ClaimPage() {
     setTxStatus("idle");
     setTxError(undefined);
   };
+
+  if (isPoolLoading) {
+    return (
+      <div className="min-h-screen bg-[#FDFCF5] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Verifying pool...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isPool) {
+    return <NotFoundPool />;
+  }
 
   if (metadata === null) {
     return <NotFoundPool />;
