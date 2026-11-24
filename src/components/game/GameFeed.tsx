@@ -18,6 +18,16 @@ import { useTimer } from "react-timer-hook";
 import { Button } from "../ui/button";
 import { formatEther } from "viem/utils";
 
+/**
+ * Builds a stable cache key for contract results. `JSON.stringify` throws on
+ * `bigint` values, which are returned for every `uint256` field, so serialize
+ * them explicitly before comparing.
+ */
+const toCacheKey = (value: unknown): string =>
+  JSON.stringify(value, (_key, item) =>
+    typeof item === "bigint" ? item.toString() : item
+  ) ?? "";
+
 const Countdown = ({ expiry }: { expiry: bigint }) => {
   const { seconds, minutes, hours, days, isRunning } = useTimer({
     expiryTimestamp: new Date(Number(expiry) * 1000),
@@ -324,7 +334,7 @@ const MetadataLoader = ({
     if (metadata) {
       onMetadataUpdate(address, metadata);
     }
-  }, [address, metadata ? JSON.stringify(metadata) : null, onMetadataUpdate]);
+  }, [address, metadata ? toCacheKey(metadata) : null, onMetadataUpdate]);
 
   useEffect(() => {
     if (poolState) {
@@ -332,7 +342,7 @@ const MetadataLoader = ({
     }
   }, [
     address,
-    poolState ? JSON.stringify(poolState) : null,
+    poolState ? toCacheKey(poolState) : null,
     onPoolStateUpdate,
   ]);
 
@@ -358,7 +368,7 @@ export const PredictionPoolsFeed = () => {
   const handleMetadataUpdate = useCallback((address: string, metadata: any) => {
     setMetadataMap((prev) => {
       const prevMetadata = prev[address];
-      if (JSON.stringify(prevMetadata) === JSON.stringify(metadata)) {
+      if (toCacheKey(prevMetadata) === toCacheKey(metadata)) {
         return prev;
       }
       return { ...prev, [address]: metadata };
@@ -369,7 +379,7 @@ export const PredictionPoolsFeed = () => {
     (address: string, poolState: any) => {
       setPoolStateMap((prev) => {
         const prevState = prev[address];
-        if (JSON.stringify(prevState) === JSON.stringify(poolState)) {
+        if (toCacheKey(prevState) === toCacheKey(poolState)) {
           return prev;
         }
         return { ...prev, [address]: poolState };
