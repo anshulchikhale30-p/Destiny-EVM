@@ -22,6 +22,7 @@ import {
   usePoolWrites,
   usePoolState,
   useTotalShares,
+  getPoolWinner,
 } from "@/lib/web3/pool";
 import NotFoundPool from "@/components/game/NotFoundPool";
 import { TransactionModal } from "@/components/modals";
@@ -145,9 +146,9 @@ export default function ClaimPage() {
   const snapshotPriceUSD = snapshotPriceRaw / 1e8;
   const currentPriceUSD = currentPriceRaw / 1e8;
 
-  const bullWins = snapshotTaken
-    ? snapshotPriceUSD > targetPriceUSD
-    : currentPriceUSD > targetPriceUSD;
+  const bullWins = getPoolWinner(metadata);
+  const isBullWinner = bullWins === true;
+  const isBearWinner = bullWins === false;
 
   const formatChainlinkPrice = (priceRaw: number) => {
     if (!priceRaw || priceRaw === 0) return "0.00";
@@ -167,10 +168,16 @@ export default function ClaimPage() {
 
   const userHasBullShares = bullShares > BigInt(0);
   const userHasBearShares = bearShares > BigInt(0);
-  const userWon = bullWins ? userHasBullShares : userHasBearShares;
-  const userLost = bullWins
+  const userWon = isBullWinner
+    ? userHasBullShares
+    : isBearWinner
+    ? userHasBearShares
+    : false;
+  const userLost = isBullWinner
     ? userHasBearShares && !userHasBullShares
-    : userHasBullShares && !userHasBearShares;
+    : isBearWinner
+    ? userHasBullShares && !userHasBearShares
+    : false;
 
   const totalBull = poolState?.bullReserve || BigInt(0);
   const totalBear = poolState?.bearReserve || BigInt(0);
@@ -186,7 +193,7 @@ export default function ClaimPage() {
       : BigInt(0);
 
   const totalClaimableReward = userWon
-    ? bullWins
+    ? isBullWinner
       ? userBullReward
       : userBearReward
     : BigInt(0);
@@ -213,12 +220,12 @@ export default function ClaimPage() {
 
   const handleClaim = async () => {
     setTxTitle("Claiming Rewards");
-    setTxDescription(`Claiming your ${bullWins ? "BULL" : "BEAR"} winnings`);
+    setTxDescription(`Claiming your ${isBullWinner ? "BULL" : "BEAR"} winnings`);
     setTxStatus("pending");
     setModalOpen(true);
 
     try {
-      const hash = bullWins ? await claimBull() : await claimBear();
+      const hash = isBullWinner ? await claimBull() : await claimBear();
       setTxHash(hash);
     } catch (error: any) {
       console.error("Claim failed:", error);
@@ -296,20 +303,36 @@ export default function ClaimPage() {
               <div className="flex items-center gap-3 mb-5">
                 <div
                   className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    bullWins ? "bg-green-100" : "bg-red-100"
+                    isBullWinner
+                      ? "bg-green-100"
+                      : isBearWinner
+                      ? "bg-red-100"
+                      : "bg-gray-100"
                   }`}
                 >
                   <Trophy
                     className={`h-6 w-6 ${
-                      bullWins ? "text-green-600" : "text-red-600"
+                      isBullWinner
+                        ? "text-green-600"
+                        : isBearWinner
+                        ? "text-red-600"
+                        : "text-gray-500"
                     }`}
                   />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-black">
-                    {bullWins ? "🐂 BULL" : "🐻 BEAR"} WINS!
+                    {isBullWinner
+                      ? "🐂 BULL WINS!"
+                      : isBearWinner
+                      ? "🐻 BEAR WINS!"
+                      : "Awaiting Snapshot"}
                   </h2>
-                  <p className="text-sm text-gray-600">Pool has concluded</p>
+                  <p className="text-sm text-gray-600">
+                    {isBullWinner || isBearWinner
+                      ? "Pool has concluded"
+                      : "The final price has not been recorded yet"}
+                  </p>
                 </div>
               </div>
 
@@ -323,7 +346,11 @@ export default function ClaimPage() {
 
                 <div
                   className={`rounded-xl p-4 ${
-                    bullWins ? "bg-green-50" : "bg-red-50"
+                    isBullWinner
+                      ? "bg-green-50"
+                      : isBearWinner
+                      ? "bg-red-50"
+                      : "bg-gray-50"
                   }`}
                 >
                   <p className="text-xs text-gray-600 mb-1">
@@ -393,10 +420,19 @@ export default function ClaimPage() {
                 <p className="font-mono mt-2 text-blue-700">
                   Comparing: ${snapshotPriceUSD.toFixed(2)} &gt; $
                   {targetPriceUSD.toFixed(2)} ={" "}
-                  {snapshotPriceUSD > targetPriceUSD ? "true" : "false"}
+                  {bullWins === undefined
+                    ? "snapshot not taken"
+                    : bullWins
+                    ? "true"
+                    : "false"}
                 </p>
                 <p className="font-mono font-bold text-blue-900">
-                  Winner: {bullWins ? "BULL 🐂" : "BEAR 🐻"}
+                  Winner:{" "}
+                  {isBullWinner
+                    ? "BULL 🐂"
+                    : isBearWinner
+                    ? "BEAR 🐻"
+                    : "Awaiting snapshot"}
                 </p>
               </div>
             </div>
@@ -421,7 +457,7 @@ export default function ClaimPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div
                     className={`p-3 rounded-xl ${
-                      bullWins
+                      isBullWinner
                         ? "bg-green-50 border-2 border-green-500"
                         : "bg-gray-50"
                     }`}
@@ -429,15 +465,15 @@ export default function ClaimPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <TrendingUp
                         className={`h-4 w-4 ${
-                          bullWins ? "text-green-600" : "text-gray-600"
+                          isBullWinner ? "text-green-600" : "text-gray-600"
                         }`}
                       />
                       <span
                         className={`text-sm font-semibold ${
-                          bullWins ? "text-green-900" : "text-gray-700"
+                          isBullWinner ? "text-green-900" : "text-gray-700"
                         }`}
                       >
-                        BULL {bullWins && "👑"}
+                        BULL {isBullWinner && "👑"}
                       </span>
                     </div>
                     <p className="text-lg font-bold text-black">
@@ -447,7 +483,7 @@ export default function ClaimPage() {
 
                   <div
                     className={`p-3 rounded-xl ${
-                      !bullWins
+                      isBearWinner
                         ? "bg-red-50 border-2 border-red-500"
                         : "bg-gray-50"
                     }`}
@@ -455,15 +491,15 @@ export default function ClaimPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <TrendingDown
                         className={`h-4 w-4 ${
-                          !bullWins ? "text-red-600" : "text-gray-600"
+                          isBearWinner ? "text-red-600" : "text-gray-600"
                         }`}
                       />
                       <span
                         className={`text-sm font-semibold ${
-                          !bullWins ? "text-red-900" : "text-gray-700"
+                          isBearWinner ? "text-red-900" : "text-gray-700"
                         }`}
                       >
-                        BEAR {!bullWins && "👑"}
+                        BEAR {isBearWinner && "👑"}
                       </span>
                     </div>
                     <p className="text-lg font-bold text-black">
@@ -534,8 +570,13 @@ export default function ClaimPage() {
                       hasClaimableRewards ? "text-gray-600" : "text-gray-500"
                     }`}
                   >
-                    Your {bullWins ? "BULL" : "BEAR"}{" "}
-                    {hasClaimableRewards ? "Winnings" : "Position"}
+                    {isBullWinner || isBearWinner
+                      ? `Your ${isBullWinner ? "BULL" : "BEAR"} ${
+                          hasClaimableRewards ? "Winnings" : "Position"
+                        }`
+                      : hasClaimableRewards
+                      ? "Your Winnings"
+                      : "Your Position"}
                   </p>
                   <p
                     className={`text-3xl font-bold ${
@@ -657,7 +698,7 @@ export default function ClaimPage() {
               <div className="space-y-3">
                 <div
                   className={`p-3 rounded-xl ${
-                    userHasBullShares && bullWins
+                    userHasBullShares && isBullWinner
                       ? "bg-green-50 border-2 border-green-500"
                       : "bg-gray-50"
                   }`}
@@ -666,7 +707,7 @@ export default function ClaimPage() {
                     <div className="flex items-center gap-2">
                       <TrendingUp
                         className={`h-4 w-4 ${
-                          userHasBullShares && bullWins
+                          userHasBullShares && isBullWinner
                             ? "text-green-600"
                             : "text-gray-600"
                         }`}
@@ -679,7 +720,7 @@ export default function ClaimPage() {
                       {Number(formatEther(bullShares)).toFixed(6)}
                     </span>
                   </div>
-                  {snapshotTaken && userHasBullShares && bullWins && (
+                  {isBullWinner && userHasBullShares && (
                     <div className="text-xs text-green-700 font-semibold">
                       Reward: {Number(formatEther(userBullReward)).toFixed(4)}{" "}
                       ETH
@@ -689,7 +730,7 @@ export default function ClaimPage() {
 
                 <div
                   className={`p-3 rounded-xl ${
-                    userHasBearShares && !bullWins
+                    userHasBearShares && isBearWinner
                       ? "bg-red-50 border-2 border-red-500"
                       : "bg-gray-50"
                   }`}
@@ -698,7 +739,7 @@ export default function ClaimPage() {
                     <div className="flex items-center gap-2">
                       <TrendingDown
                         className={`h-4 w-4 ${
-                          userHasBearShares && !bullWins
+                          userHasBearShares && isBearWinner
                             ? "text-red-600"
                             : "text-gray-600"
                         }`}
@@ -711,7 +752,7 @@ export default function ClaimPage() {
                       {Number(formatEther(bearShares)).toFixed(6)}
                     </span>
                   </div>
-                  {snapshotTaken && userHasBearShares && !bullWins && (
+                  {isBearWinner && userHasBearShares && (
                     <div className="text-xs text-red-700 font-semibold">
                       Reward: {Number(formatEther(userBearReward)).toFixed(4)}{" "}
                       ETH
@@ -731,7 +772,7 @@ export default function ClaimPage() {
               {snapshotTaken && userLost && (
                 <div className="mt-4 p-3 bg-gray-100 rounded-xl text-center">
                   <p className="text-sm text-gray-600">
-                    {bullWins ? "BULL" : "BEAR"} side won this round
+                    {isBullWinner ? "BULL" : "BEAR"} side won this round
                   </p>
                 </div>
               )}

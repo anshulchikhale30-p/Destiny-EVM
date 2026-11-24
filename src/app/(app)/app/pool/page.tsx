@@ -24,6 +24,7 @@ import {
   useTokenPrices,
   usePoolState,
   useUserPosition,
+  getPoolWinner,
 } from "@/lib/web3/pool";
 import NotFoundPool from "@/components/game/NotFoundPool";
 import { TransactionModal } from "@/components/modals";
@@ -262,12 +263,13 @@ export default function PoolDetailPage() {
     ? String(metadata.tokenPair)
     : "Loading...";
 
-  const bullWins =
-    metadata?.snapshotPrice && metadata?.targetPrice
-      ? Number(metadata.snapshotPrice) > Number(metadata.targetPrice)
-      : current > targetPrice;
-
-  const userWon = bullWins ? bullShares > 0 : bearShares > 0;
+  const bullWins = getPoolWinner(metadata);
+  const userWon =
+    bullWins === undefined
+      ? false
+      : bullWins
+      ? bullShares > 0
+      : bearShares > 0;
 
   const handleMint = async () => {
     if (!betAmount || parseFloat(betAmount) <= 0) return;
@@ -880,13 +882,16 @@ export default function PoolDetailPage() {
                 </button>
               )}
 
-              {isExpired && !userWon && (bullShares > 0 || bearShares > 0) && (
-                <div className="mt-3.5 p-3 bg-gray-100 rounded-xl text-center">
-                  <p className="text-sm text-gray-600">
-                    {bullWins ? "BULL" : "BEAR"} side won this round
-                  </p>
-                </div>
-              )}
+              {isExpired &&
+                bullWins !== undefined &&
+                !userWon &&
+                (bullShares > 0 || bearShares > 0) && (
+                  <div className="mt-3.5 p-3 bg-gray-100 rounded-xl text-center">
+                    <p className="text-sm text-gray-600">
+                      {bullWins ? "BULL" : "BEAR"} side won this round
+                    </p>
+                  </div>
+                )}
             </div>
           </div>
         </div>

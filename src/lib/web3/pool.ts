@@ -2,6 +2,32 @@ import { useReadContract, useWriteContract, useAccount } from "wagmi";
 import abi from "@/lib/contracts/abi/PredictionPool.json" assert { type: "json" };
 import { parseEther } from "viem/utils";
 
+type SnapshotWinnerInput = {
+  snapshotTaken?: unknown;
+  snapshotPrice?: unknown;
+  targetPrice?: unknown;
+};
+
+/**
+ * Resolves the pool winner from the on-chain snapshot.
+ *
+ * `targetPrice` and `snapshotPrice` share the oracle's feed decimals, so the
+ * raw integers are compared directly. Values are narrowed at runtime because
+ * the bundled JSON ABI does not infer their types. Returns `undefined` until
+ * the snapshot has been taken, ensuring no winner is shown based on a live
+ * price.
+ */
+export function getPoolWinner(
+  metadata?: SnapshotWinnerInput | null
+): boolean | undefined {
+  if (metadata?.snapshotTaken !== true) return undefined;
+  const { snapshotPrice, targetPrice } = metadata;
+  if (typeof snapshotPrice !== "bigint" || typeof targetPrice !== "bigint") {
+    return undefined;
+  }
+  return snapshotPrice > targetPrice;
+}
+
 // ========== READ HOOKS ==========
 
 export function usePoolMetadata(address?: `0x${string}`) {
