@@ -2,6 +2,7 @@
 
 import { ChainNavigation } from "@/components/layout/ChainNavigation";
 import { Navigation } from "@/components/layout/Navigation";
+import { NetworkGuard } from "@/components/layout/NetworkGuard";
 import {
   Card,
   CardDescription,
@@ -47,7 +48,7 @@ export default function Layout({
   return (
     <div>
       <Navigation />
-      {children}
+      <NetworkGuard>{children}</NetworkGuard>
     </div>
   );
 }

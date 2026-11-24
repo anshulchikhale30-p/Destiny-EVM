@@ -4,21 +4,13 @@ import { FACTORY_ADDRESSES } from "../contracts/addresses";
 import { parseEther } from "viem/utils";
 
 // ---------- 🔹 Get correct factory address for the connected network ----------
-function useFactoryAddress(): `0x${string}` {
+function useFactoryAddress(): `0x${string}` | undefined {
   const chainId = useChainId();
-  if (!chainId)
-    throw new Error(
-      "Chain ID is undefined. Please connect to a supported network."
-    );
-
-  const factoryAddress = FACTORY_ADDRESSES[chainId];
-  if (!factoryAddress)
-    throw new Error(
-      `Unsupported network: ${chainId}. Please switch to a supported network.`
-    );
-
-  return factoryAddress;
+  return FACTORY_ADDRESSES[chainId];
 }
+
+const UNSUPPORTED_NETWORK_MESSAGE =
+  "Unsupported network. Switch to Sepolia or Polygon Amoy to continue.";
 
 // ---------- 🔹 1. Create a new prediction pool (UPDATED: Now payable) ----------
 export function useCreatePredictionPool() {
@@ -42,6 +34,7 @@ export function useCreatePredictionPool() {
     creatorFee: bigint,
     initialLiquidityEth: string
   ) => {
+    if (!factoryAddress) throw new Error(UNSUPPORTED_NETWORK_MESSAGE);
     const value = parseEther(initialLiquidityEth);
 
     return await writeContractAsync({
@@ -65,6 +58,7 @@ export function useAllPools(
     abi: PredictionFactoryAbi,
     functionName: "getAllPools",
     args: [offset, limit],
+    query: { enabled: Boolean(factoryAddress) },
   });
 
   return {
@@ -81,6 +75,7 @@ export function useAllPoolsCount() {
     address: factoryAddress,
     abi: PredictionFactoryAbi,
     functionName: "getAllPoolsCount",
+    query: { enabled: Boolean(factoryAddress) },
   });
 
   return {
@@ -102,6 +97,7 @@ export function useGetPoolsByCreator(
     abi: PredictionFactoryAbi,
     functionName: "getPoolsByCreator",
     args: [creator, offset, limit],
+    query: { enabled: Boolean(factoryAddress) },
   });
 
   return {
@@ -119,6 +115,7 @@ export function useGetPoolsByCreatorCount(creator: `0x${string}`) {
     abi: PredictionFactoryAbi,
     functionName: "getPoolsByCreatorCount",
     args: [creator],
+    query: { enabled: Boolean(factoryAddress) },
   });
 
   return {
@@ -136,6 +133,7 @@ export function useGetPriceFeed(tokenPair: string) {
     abi: PredictionFactoryAbi,
     functionName: "getPriceFeed",
     args: [tokenPair],
+    query: { enabled: Boolean(factoryAddress) },
   });
 
   return {
@@ -152,6 +150,7 @@ export function useSetPriceFeed() {
 
   return {
     setPriceFeed: async (tokenPair: string, feedAddress: `0x${string}`) => {
+      if (!factoryAddress) throw new Error(UNSUPPORTED_NETWORK_MESSAGE);
       return await writeContractAsync({
         address: factoryAddress,
         abi: PredictionFactoryAbi,
@@ -169,6 +168,7 @@ export function useFactoryOwner() {
     address: factoryAddress,
     abi: PredictionFactoryAbi,
     functionName: "owner",
+    query: { enabled: Boolean(factoryAddress) },
   });
 
   return {
@@ -186,6 +186,7 @@ export function useIsPool(poolAddress: `0x${string}`) {
     abi: PredictionFactoryAbi,
     functionName: "isPool",
     args: [poolAddress],
+    query: { enabled: Boolean(factoryAddress) },
   });
 
   return {
