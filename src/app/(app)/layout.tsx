@@ -8,9 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useSyncWallet } from "@/hooks/useSyncWallet";
-import { useWalletStore } from "@/store/walletStore";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 
 /**
  * Provides the main application layout, displaying navigation and content when the wallet is connected, or prompting the user to connect their wallet otherwise.
@@ -20,8 +19,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 export default function Layout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { isConnected } = useWalletStore();
-  useSyncWallet();
+  const { isConnected } = useAccount();
 
   if (!isConnected) {
     return (

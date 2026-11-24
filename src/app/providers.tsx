@@ -10,6 +10,11 @@ import { Toaster } from "react-hot-toast";
 
 const queryClient = new QueryClient();
 
+function WalletStateSync() {
+  useSyncWallet();
+  return null;
+}
+
 /**
  * Wraps child components with context providers for React Query, wallet management, blockchain interaction, and toast notifications.
  *
@@ -21,6 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <WagmiProvider config={config}>
+        <WalletStateSync />
         <RainbowKitProvider initialChain={polygonAmoy}>
           {children}
           <Toaster />
