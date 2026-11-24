@@ -114,7 +114,12 @@ export default function PoolDetailPage() {
   const router = useRouter();
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
-  const { metadata, refetch: refetchMetadata } = usePoolMetadata(
+  const {
+    metadata,
+    isLoading: isMetadataLoading,
+    isError: isMetadataError,
+    refetch: refetchMetadata,
+  } = usePoolMetadata(
     contract || "0x0000000000000000000000000000000000000000"
   );
 
@@ -352,11 +357,7 @@ export default function PoolDetailPage() {
     setTxError(undefined);
   };
 
-  if (metadata === null) {
-    return <NotFoundPool />;
-  }
-
-  if (!metadata) {
+  if (isMetadataLoading) {
     return (
       <div className="min-h-screen bg-[#FDFCF5] flex items-center justify-center">
         <div className="text-center">
@@ -365,6 +366,26 @@ export default function PoolDetailPage() {
         </div>
       </div>
     );
+  }
+
+  if (isMetadataError) {
+    return (
+      <div className="min-h-screen bg-[#FDFCF5] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-3">Unable to load pool data.</p>
+          <button
+            onClick={() => refetchMetadata()}
+            className="px-4 py-2 bg-black text-white text-sm font-semibold rounded-xl"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!metadata) {
+    return <NotFoundPool />;
   }
 
   // Expired pool redirect screen

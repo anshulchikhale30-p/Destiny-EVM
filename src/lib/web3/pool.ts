@@ -87,12 +87,12 @@ export function usePoolMetadata(address?: `0x${string}`) {
 
   return {
     metadata:
-      tokenPairQuery.data &&
-        targetPriceQuery.data &&
-        expiryQuery.data &&
-        rampStartQuery.data &&
-        creatorFeeQuery.data &&
-        latestPriceQuery.data
+      tokenPairQuery.data !== undefined &&
+        targetPriceQuery.data !== undefined &&
+        expiryQuery.data !== undefined &&
+        rampStartQuery.data !== undefined &&
+        creatorFeeQuery.data !== undefined &&
+        latestPriceQuery.data !== undefined
         ? {
           tokenPair: tokenPairQuery.data,
           targetPrice: targetPriceQuery.data,
@@ -109,6 +109,20 @@ export function usePoolMetadata(address?: `0x${string}`) {
           createdAt: createdAtQuery.data,
         }
         : null,
+    isLoading:
+      tokenPairQuery.isLoading ||
+      targetPriceQuery.isLoading ||
+      expiryQuery.isLoading ||
+      rampStartQuery.isLoading ||
+      creatorFeeQuery.isLoading ||
+      latestPriceQuery.isLoading,
+    isError:
+      tokenPairQuery.isError ||
+      targetPriceQuery.isError ||
+      expiryQuery.isError ||
+      rampStartQuery.isError ||
+      creatorFeeQuery.isError ||
+      latestPriceQuery.isError,
     refetch: async () => {
       await tokenPairQuery.refetch();
       await targetPriceQuery.refetch();
