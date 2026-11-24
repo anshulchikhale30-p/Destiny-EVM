@@ -11,78 +11,84 @@ export function usePoolMetadata(address?: `0x${string}`) {
     abi,
     address,
     functionName: "tokenPair",
+    query: { enabled },
   });
 
   const targetPriceQuery = useReadContract({
     abi,
     address,
     functionName: "targetPrice",
+    query: { enabled },
   });
 
   const expiryQuery = useReadContract({
     abi,
     address,
     functionName: "expiry",
+    query: { enabled },
   });
 
   const rampStartQuery = useReadContract({
     abi,
     address,
     functionName: "rampStart",
+    query: { enabled },
   });
 
   const creatorFeeQuery = useReadContract({
     abi,
     address,
     functionName: "creatorFee",
+    query: { enabled },
   });
 
   const snapshotPriceQuery = useReadContract({
     abi,
     address,
     functionName: "snapshotPrice",
+    query: { enabled },
   });
 
   const snapshotTakenQuery = useReadContract({
     abi,
     address,
     functionName: "snapshotTaken",
+    query: { enabled },
   });
 
   const latestPriceQuery = useReadContract({
     abi,
     address,
     functionName: "getLatestPrice",
+    query: { enabled },
   });
 
   const currentFeeQuery = useReadContract({
     abi,
     address,
     functionName: "fee",
-  });
-
-  const initializedQuery = useReadContract({
-    abi,
-    address,
-    functionName: "initialized",
+    query: { enabled },
   });
 
   const creatorQuery = useReadContract({
     abi,
     address,
     functionName: "creator",
+    query: { enabled },
   });
 
   const protocolFeeRecipientQuery = useReadContract({
     abi,
     address,
     functionName: "protocolFeeRecipient",
+    query: { enabled },
   });
 
   const createdAtQuery = useReadContract({
     abi,
     address,
     functionName: "createdAt",
+    query: { enabled },
   });
 
   return {
@@ -103,21 +109,26 @@ export function usePoolMetadata(address?: `0x${string}`) {
           currentFee: currentFeeQuery.data,
           snapshotPrice: snapshotPriceQuery.data,
           snapshotTaken: snapshotTakenQuery.data,
-          initialized: initializedQuery.data,
           creator: creatorQuery.data as `0x${string}` | undefined,
           protocolFeeRecipient: protocolFeeRecipientQuery.data as `0x${string}` | undefined,
           createdAt: createdAtQuery.data,
         }
         : null,
     refetch: async () => {
-      await tokenPairQuery.refetch();
-      await targetPriceQuery.refetch();
-      await expiryQuery.refetch();
-      await snapshotPriceQuery.refetch();
-      await snapshotTakenQuery.refetch();
-      await latestPriceQuery.refetch();
-      await currentFeeQuery.refetch();
-      await creatorQuery.refetch();
+      await Promise.all([
+        tokenPairQuery.refetch(),
+        targetPriceQuery.refetch(),
+        expiryQuery.refetch(),
+        rampStartQuery.refetch(),
+        creatorFeeQuery.refetch(),
+        snapshotPriceQuery.refetch(),
+        snapshotTakenQuery.refetch(),
+        latestPriceQuery.refetch(),
+        currentFeeQuery.refetch(),
+        creatorQuery.refetch(),
+        protocolFeeRecipientQuery.refetch(),
+        createdAtQuery.refetch(),
+      ]);
     },
   };
 }

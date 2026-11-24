@@ -195,18 +195,3 @@ export function useIsPool(poolAddress: `0x${string}`) {
   };
 }
 
-// ---------- 🔹 10. Get minimum initial liquidity required (NEW) - with refetch ----------
-export function useMinInitialLiquidity() {
-  const factoryAddress = useFactoryAddress();
-  const minLiqQuery = useReadContract({
-    address: factoryAddress,
-    abi: PredictionFactoryAbi,
-    functionName: "getMinInitialLiquidity",
-  });
-
-  return {
-    minLiquidity: minLiqQuery.data as bigint | undefined,
-    isLoading: minLiqQuery.isLoading,
-    refetch: minLiqQuery.refetch,
-  };
-}

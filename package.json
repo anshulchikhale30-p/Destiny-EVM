@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run check:abi && next build",
+    "check:abi": "node scripts/check-abi-functions.mjs",
     "start": "next start",
     "lint": "next lint"
   },
